@@ -2,6 +2,7 @@ package kas
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -146,7 +147,16 @@ func ReconcileServiceStatus(svc *corev1.Service, strategy *hyperv1.ServicePublis
 		if svc.Spec.Ports[0].NodePort == 0 {
 			return
 		}
-		port = svc.Spec.Ports[0].NodePort
+		if value, ok := svc.Annotations["ibm-cloud-override-service-nodeport"]; ok {
+			var overridePort int
+			overridePort, err = strconv.Atoi(value)
+			if err != nil {
+				return
+			}
+			port = int32(overridePort)
+		} else {
+			port = svc.Spec.Ports[0].NodePort
+		}
 		host = strategy.NodePort.Address
 	case hyperv1.Route:
 		if message, err := util.CollectLBMessageIfNotProvisioned(svc, messageCollector); err != nil || message != "" {
@@ -348,7 +358,16 @@ func ReconcileKonnectivityServerServiceStatus(svc *corev1.Service, route *routev
 		if svc.Spec.Ports[0].NodePort == 0 {
 			return
 		}
-		port = svc.Spec.Ports[0].NodePort
+		if value, ok := svc.Annotations["ibm-cloud-override-service-nodeport"]; ok {
+			var overridePort int
+			overridePort, err = strconv.Atoi(value)
+			if err != nil {
+				return
+			}
+			port = int32(overridePort)
+		} else {
+			port = svc.Spec.Ports[0].NodePort
+		}
 		host = strategy.NodePort.Address
 	case hyperv1.Route:
 		if strategy.Route != nil && strategy.Route.Hostname != "" {

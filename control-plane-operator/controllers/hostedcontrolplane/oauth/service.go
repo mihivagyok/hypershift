@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -84,7 +85,16 @@ func ReconcileServiceStatus(svc *corev1.Service, route *routev1.Route, strategy 
 		if svc.Spec.Ports[0].NodePort == 0 {
 			return
 		}
-		port = svc.Spec.Ports[0].NodePort
+		if value, ok := svc.Annotations["ibm-cloud-override-service-nodeport"]; ok {
+			var overridePort int
+			overridePort, err = strconv.Atoi(value)
+			if err != nil {
+				return
+			}
+			port = int32(overridePort)
+		} else {
+			port = svc.Spec.Ports[0].NodePort
+		}
 		host = strategy.NodePort.Address
 	}
 	return
