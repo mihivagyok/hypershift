@@ -10,7 +10,6 @@ import (
 	"github.com/openshift/hypershift/control-plane-operator/controllers/hostedcontrolplane/manifests"
 	"github.com/openshift/hypershift/support/config"
 	component "github.com/openshift/hypershift/support/controlplane-component"
-	"github.com/openshift/hypershift/support/podspec"
 	"github.com/openshift/hypershift/support/util"
 
 	configv1 "github.com/openshift/api/config/v1"
@@ -58,7 +57,7 @@ func adaptDeployment(cpContext component.WorkloadContext, deployment *appsv1.Dep
 			noProxy = append(noProxy, "iam.cloud.ibm.com", "iam.test.cloud.ibm.com")
 		}
 
-		podspec.UpsertEnvVar(c, corev1.EnvVar{
+		util.UpsertEnvVar(c, corev1.EnvVar{
 			Name:  "NO_PROXY",
 			Value: strings.Join(noProxy, ","),
 		})
