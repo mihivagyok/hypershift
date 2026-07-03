@@ -122,6 +122,12 @@ func buildCNOEnvVars(cpContext component.WorkloadContext) []corev1.EnvVar {
 			Name: "PROXY_INTERNAL_APISERVER_ADDRESS", Value: "true",
 		})
 	}
+	if hcp.Spec.Networking.NetworkType == hyperv1.Calico &&
+		hcp.Spec.Platform.Type == hyperv1.IBMCloudPlatform {
+		cnoEnv = append(cnoEnv, corev1.EnvVar{
+			Name: "MULTUS_CNI_VERSION", Value: "0.3.1",
+		})
+	}
 
 	if os.Getenv(rhobsmonitoring.EnvironmentVariable) == "1" {
 		cnoEnv = append(cnoEnv, corev1.EnvVar{
