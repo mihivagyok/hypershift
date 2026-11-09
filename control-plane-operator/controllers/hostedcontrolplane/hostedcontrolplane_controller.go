@@ -1003,6 +1003,9 @@ func useHCPRouter(hostedControlPlane *hyperv1.HostedControlPlane) bool {
 }
 
 func labelHCPRoutes(hcp *hyperv1.HostedControlPlane) bool {
+	if hcp.Spec.Platform.Type == hyperv1.IBMCloudPlatform {
+		return false
+	}
 	return util.IsPrivateHCP(hcp) || util.IsPublicKASWithDNS(hcp)
 }
 

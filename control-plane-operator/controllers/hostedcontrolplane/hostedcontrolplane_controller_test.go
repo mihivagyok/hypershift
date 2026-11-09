@@ -1832,3 +1832,108 @@ func componentsFakeDependencies(componentName string, namespace string) []client
 
 	return fakeComponents
 }
+
+func TestLabelHCPRoutes(t *testing.T) {
+	kasRouteWithHostname := hyperv1.ServicePublishingStrategyMapping{
+		Service: hyperv1.APIServer,
+		ServicePublishingStrategy: hyperv1.ServicePublishingStrategy{
+			Type:  hyperv1.Route,
+			Route: &hyperv1.RoutePublishingStrategy{Hostname: "api.example.com"},
+		},
+	}
+	kasRouteWithoutHostname := hyperv1.ServicePublishingStrategyMapping{
+		Service: hyperv1.APIServer,
+		ServicePublishingStrategy: hyperv1.ServicePublishingStrategy{
+			Type: hyperv1.Route,
+		},
+	}
+	kasLoadBalancer := hyperv1.ServicePublishingStrategyMapping{
+		Service: hyperv1.APIServer,
+		ServicePublishingStrategy: hyperv1.ServicePublishingStrategy{
+			Type: hyperv1.LoadBalancer,
+		},
+	}
+
+	tests := []struct {
+		name     string
+		platform hyperv1.PlatformType
+		access   hyperv1.AWSEndpointAccessType
+		services []hyperv1.ServicePublishingStrategyMapping
+		expected bool
+	}{
+		{
+			name:     "IBMCloud with KAS route and hostname does not label routes",
+			platform: hyperv1.IBMCloudPlatform,
+			services: []hyperv1.ServicePublishingStrategyMapping{kasRouteWithHostname},
+			expected: false,
+		},
+		{
+			name:     "IBMCloud with KAS route without hostname does not label routes",
+			platform: hyperv1.IBMCloudPlatform,
+			services: []hyperv1.ServicePublishingStrategyMapping{kasRouteWithoutHostname},
+			expected: false,
+		},
+		{
+			name:     "IBMCloud with KAS load balancer does not label routes",
+			platform: hyperv1.IBMCloudPlatform,
+			services: []hyperv1.ServicePublishingStrategyMapping{kasLoadBalancer},
+			expected: false,
+		},
+		{
+			name:     "AWS private labels routes",
+			platform: hyperv1.AWSPlatform,
+			access:   hyperv1.Private,
+			services: []hyperv1.ServicePublishingStrategyMapping{kasLoadBalancer},
+			expected: true,
+		},
+		{
+			name:     "AWS public and private labels routes",
+			platform: hyperv1.AWSPlatform,
+			access:   hyperv1.PublicAndPrivate,
+			services: []hyperv1.ServicePublishingStrategyMapping{kasLoadBalancer},
+			expected: true,
+		},
+		{
+			name:     "AWS public with KAS route and hostname labels routes",
+			platform: hyperv1.AWSPlatform,
+			access:   hyperv1.Public,
+			services: []hyperv1.ServicePublishingStrategyMapping{kasRouteWithHostname},
+			expected: true,
+		},
+		{
+			name:     "AWS public with KAS load balancer does not label routes",
+			platform: hyperv1.AWSPlatform,
+			access:   hyperv1.Public,
+			services: []hyperv1.ServicePublishingStrategyMapping{kasLoadBalancer},
+			expected: false,
+		},
+		{
+			name:     "None platform with KAS route and hostname labels routes",
+			platform: hyperv1.NonePlatform,
+			services: []hyperv1.ServicePublishingStrategyMapping{kasRouteWithHostname},
+			expected: true,
+		},
+		{
+			name:     "None platform with KAS load balancer does not label routes",
+			platform: hyperv1.NonePlatform,
+			services: []hyperv1.ServicePublishingStrategyMapping{kasLoadBalancer},
+			expected: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			hcp := &hyperv1.HostedControlPlane{
+				Spec: hyperv1.HostedControlPlaneSpec{
+					Platform: hyperv1.PlatformSpec{Type: tc.platform},
+					Services: tc.services,
+				},
+			}
+			if tc.platform == hyperv1.AWSPlatform {
+				hcp.Spec.Platform.AWS = &hyperv1.AWSPlatformSpec{EndpointAccess: tc.access}
+			}
+			g.Expect(labelHCPRoutes(hcp)).To(Equal(tc.expected))
+		})
+	}
+}
